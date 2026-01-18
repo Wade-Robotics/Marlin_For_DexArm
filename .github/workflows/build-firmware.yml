@@ -46,6 +46,11 @@ on:
 env:
   PLATFORMIO_ENV: DEXARM_V3_2
 
+# Required permissions for creating releases and uploading artifacts
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

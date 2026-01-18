@@ -1,75 +1,105 @@
-# Marlin 3D Printer Firmware
+# Wade Robotics Marlin
 
-![GitHub](https://img.shields.io/github/license/marlinfirmware/marlin.svg)
-![GitHub contributors](https://img.shields.io/github/contributors/marlinfirmware/marlin.svg)
-![GitHub Release Date](https://img.shields.io/github/release-date/marlinfirmware/marlin.svg)
-[![Build Status](https://github.com/MarlinFirmware/Marlin/workflows/CI/badge.svg?branch=bugfix-2.0.x)](https://github.com/MarlinFirmware/Marlin/actions)
+[![Build & Release](https://github.com/Wade-Robotics/Marlin_For_DexArm/actions/workflows/build-firmware.yml/badge.svg)](https://github.com/Wade-Robotics/Marlin_For_DexArm/actions/workflows/build-firmware.yml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-<img align="right" width=175 src="buildroot/share/pixmaps/logo/marlin-250.png" />
+Custom Marlin firmware for DexArm robotic arms, maintained by Wade Robotics.
 
-Additional documentation can be found at the [Marlin Home Page](http://marlinfw.org/).
-Please let us know if Marlin misbehaves in any way. Volunteers are standing by!
+## Features
 
-## Marlin 2.0
+- 🤖 **Real-time Position Reporting** - M114 R support for live position feedback
+- ⚡ **Over-the-Air Updates** - Flash firmware directly from Wade Robotics Studio
+- 🔧 **DexArm Optimizations** - Tuned for SCARA kinematics and pick-and-place operations
+- 🛡️ **Safe Bootloader** - Software-triggered updates with rollback protection
 
-Marlin 2.0 takes this popular RepRap firmware to the next level by adding support for much faster 32-bit and ARM-based boards while improving support for 8-bit AVR boards. Read about Marlin's decision to use a "Hardware Abstraction Layer" below.
+## Quick Start
 
-Download earlier versions of Marlin on the [Releases page](https://github.com/MarlinFirmware/Marlin/releases).
+### Option 1: Wade Robotics Studio (Recommended)
 
-## Building Marlin 2.0
+1. Download [Wade Robotics Studio](https://github.com/Wade-Robotics/Wade-Robotics-Studio/releases)
+2. Connect your DexArm
+3. Go to **Settings → Firmware Update**
+4. Click "Check for Updates" and follow the prompts
 
-To build Marlin 2.0 you'll need ~~[Arduino IDE 1.8.8 or newer](https://www.arduino.cc/en/main/software)~~ (DexArm not support Arduino IDE)or [PlatformIO](http://docs.platformio.org/en/latest/ide.html#platformio-ide). Detailed build and install instructions are posted at:
+### Option 2: Download Pre-built Firmware
 
-  - ~~[Installing Marlin (Arduino)](http://marlinfw.org/docs/basics/install_arduino.html)~~(DexArm not support Arduino IDE)
-  - [Installing Marlin (VSCode)](http://marlinfw.org/docs/basics/install_platformio_vscode.html)(recommended).
+Download the latest `firmware.bin` from [Releases](https://github.com/Wade-Robotics/Marlin_For_DexArm/releases).
 
-### Supported Platforms
+### Option 3: Build from Source
 
-  Platform|MCU|Example Boards
-  --------|---|-------
-  [Arduino AVR](https://www.arduino.cc/)|ATmega|RAMPS, Melzi, RAMBo
-  [Teensy++ 2.0](http://www.microchip.com/wwwproducts/en/AT90USB1286)|AT90USB1286|Printrboard
-  [Arduino Due](https://www.arduino.cc/en/Guide/ArduinoDue)|SAM3X8E|RAMPS-FD, RADDS, RAMPS4DUE
-  [LPC1768](http://www.nxp.com/products/microcontrollers-and-processors/arm-based-processors-and-mcus/lpc-cortex-m-mcus/lpc1700-cortex-m3/512kb-flash-64kb-sram-ethernet-usb-lqfp100-package:LPC1768FBD100)|ARM® Cortex-M3|MKS SBASE, Re-ARM, Selena Compact
-  [LPC1769](https://www.nxp.com/products/processors-and-microcontrollers/arm-microcontrollers/general-purpose-mcus/lpc1700-cortex-m3/512kb-flash-64kb-sram-ethernet-usb-lqfp100-package:LPC1769FBD100)|ARM® Cortex-M3|Smoothieboard, Azteeg X5 mini, TH3D EZBoard
-  [STM32F103](https://www.st.com/en/microcontrollers-microprocessors/stm32f103.html)|ARM® Cortex-M3|Malyan M200, GTM32 Pro, MKS Robin, BTT SKR Mini
-  [STM32F401](https://www.st.com/en/microcontrollers-microprocessors/stm32f401.html)|ARM® Cortex-M4|ARMED, Rumba32, SKR Pro, Lerdge, FYSETC S6
-  [STM32F7x6](https://www.st.com/en/microcontrollers-microprocessors/stm32f7x6.html)|ARM® Cortex-M7|The Borg, RemRam V1
-  [SAMD51P20A](https://www.adafruit.com/product/4064)|ARM® Cortex-M4|Adafruit Grand Central M4
-  [Teensy 3.5](https://www.pjrc.com/store/teensy35.html)|ARM® Cortex-M4|
-  [Teensy 3.6](https://www.pjrc.com/store/teensy36.html)|ARM® Cortex-M4|
+```bash
+# Install PlatformIO
+pip install platformio
 
-## Submitting Changes
+# Clone and build
+git clone https://github.com/Wade-Robotics/Marlin_For_DexArm.git
+cd Marlin_For_DexArm
+pio run -e DEXARM_V3_2
+```
 
-- Submit **Bug Fixes** as Pull Requests to the ([bugfix-2.0.x](https://github.com/MarlinFirmware/Marlin/tree/bugfix-2.0.x)) branch.
-- Follow the [Coding Standards](http://marlinfw.org/docs/development/coding_standards.html) to gain points with the maintainers.
-- Please submit your questions and concerns to the [Issue Queue](https://github.com/MarlinFirmware/Marlin/issues).
+Firmware will be at `.pio/build/DEXARM_V3_2/firmware.bin`
 
-## Marlin Support
+## Flashing Firmware
 
-For best results getting help with configuration and troubleshooting, please use the following resources:
+### Via Wade Robotics Studio
+The easiest method - handles everything automatically including bootloader entry.
 
-- [Marlin Documentation](http://marlinfw.org) - Official Marlin documentation
-- [Marlin Discord](https://discord.gg/n5NJ59y) - Discuss issues with Marlin users and developers
-- Facebook Group ["Marlin Firmware"](https://www.facebook.com/groups/1049718498464482/)
-- RepRap.org [Marlin Forum](http://forums.reprap.org/list.php?415)
-- [Tom's 3D Forums](https://discuss.toms3d.org/)
-- Facebook Group ["Marlin Firmware for 3D Printers"](https://www.facebook.com/groups/3Dtechtalk/)
-- [Marlin Configuration](https://www.youtube.com/results?search_query=marlin+configuration) on YouTube
+### Manual Method
+1. Connect to DexArm via serial terminal (115200 baud)
+2. Send `M2002` then `M2003` to enter bootloader
+3. Use YMODEM protocol to transfer `firmware.bin`
+4. Send `3` to execute the new firmware
 
-## Credits
+## Supported Hardware
 
-The current Marlin dev team consists of:
+| Board | MCU | Status |
+|-------|-----|--------|
+| DexArm V3.2 | STM32F407ZGT6 | ✅ Primary |
+| DexArm V3.1 | STM32F407ZGT6 | ✅ Supported |
 
- - Scott Lahteine [[@thinkyhead](https://github.com/thinkyhead)] - USA &nbsp; [Donate](http://www.thinkyhead.com/donate-to-marlin) / Flattr: [![Flattr Scott](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=thinkyhead&url=https://github.com/MarlinFirmware/Marlin&title=Marlin&language=&tags=github&category=software)
- - Roxanne Neufeld [[@Roxy-3D](https://github.com/Roxy-3D)] - USA
- - Chris Pepper [[@p3p](https://github.com/p3p)] - UK
- - Bob Kuhn [[@Bob-the-Kuhn](https://github.com/Bob-the-Kuhn)] - USA
- - João Brazio [[@jbrazio](https://github.com/jbrazio)] - Portugal
- - Erik van der Zalm [[@ErikZalm](https://github.com/ErikZalm)] - Netherlands &nbsp; [![Flattr Erik](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=ErikZalm&url=https://github.com/MarlinFirmware/Marlin&title=Marlin&language=&tags=github&category=software)
+## Configuration
+
+Key configuration files:
+- `Marlin/Configuration.h` - Basic settings
+- `Marlin/Configuration_adv.h` - Advanced features (M114_REALTIME enabled here)
+
+## Contributing
+
+1. Fork this repository
+2. Create a feature branch from `DexArm_Dev`
+3. Submit a Pull Request to `main`
+
+Builds are automatically triggered on push. Merges to `main` create new releases.
+
+## Upstream Marlin
+
+This firmware is based on [Marlin Firmware](https://marlinfw.org/), the popular open-source firmware for 3D printers and CNC machines.
+
+- [Marlin Documentation](https://marlinfw.org/docs/basics/introduction.html)
+- [Marlin GitHub](https://github.com/MarlinFirmware/Marlin)
+- [G-code Reference](https://marlinfw.org/meta/gcode/)
 
 ## License
 
-Marlin is published under the [GPL license](/LICENSE) because we believe in open development. The GPL comes with both rights and obligations. Whether you use Marlin firmware as the driver for your open or closed-source product, you must keep Marlin open, and you must provide your compatible Marlin source code to end users upon request. The most straightforward way to comply with the Marlin license is to make a fork of Marlin on Github, perform your modifications, and direct users to your modified fork.
+This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
 
-While we can't prevent the use of this code in products (3D printers, CNC, etc.) that are closed source or crippled by a patent, we would prefer that you choose another firmware or, better yet, make your own.
+Marlin is published under the GPL license because we believe in open development. The GPL comes with both rights and obligations. Whether you use this firmware as the driver for your open or closed-source product, you must keep the source open and provide your compatible source code to end users upon request.
+
+## Credits
+
+**Wade Robotics Marlin** is maintained by:
+- Wade Robotics Team
+
+**Original Marlin Firmware** by:
+- Scott Lahteine [@thinkyhead](https://github.com/thinkyhead)
+- Roxanne Neufeld [@Roxy-3D](https://github.com/Roxy-3D)
+- Chris Pepper [@p3p](https://github.com/p3p)
+- Bob Kuhn [@Bob-the-Kuhn](https://github.com/Bob-the-Kuhn)
+- Erik van der Zalm [@ErikZalm](https://github.com/ErikZalm)
+
+---
+
+<p align="center">
+  <strong>Wade Robotics</strong><br>
+  Making robotics accessible
+</p>

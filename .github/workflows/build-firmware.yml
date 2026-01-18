@@ -1,6 +1,6 @@
-# Build and Release DexArm Firmware
+# Wade Robotics Marlin - Build and Release
 #
-# This workflow builds the Marlin firmware for DexArm and:
+# This workflow builds Wade Robotics Marlin firmware for DexArm and:
 # - On push to main: Automatically creates a release with the firmware
 # - On push to DexArm_Dev: Builds and uploads as artifact for testing
 # - Manual trigger: Optionally create release
@@ -10,7 +10,7 @@
 # - Firmware validation (size + ARM vector table check)
 # - SHA256 checksums for verification
 
-name: Build & Release Firmware
+name: Wade Robotics Marlin
 
 on:
   push:
@@ -236,12 +236,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.build.outputs.version }}
-          name: DexArm Firmware ${{ needs.build.outputs.version }}
+          name: Wade Robotics Marlin ${{ needs.build.outputs.version }}
           draft: false
           prerelease: false
           files: ./firmware/firmware.bin
           body: |
-            ## 🤖 DexArm Firmware ${{ needs.build.outputs.version }}
+            ## 🤖 Wade Robotics Marlin ${{ needs.build.outputs.version }}
             
             ### What's New
             ${{ steps.changelog.outputs.changes || 'See commit history for changes.' }}
@@ -295,11 +295,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.build.outputs.version }}
-          name: DexArm Firmware ${{ needs.build.outputs.version }}
+          name: Wade Robotics Marlin ${{ needs.build.outputs.version }}
           draft: true
           files: ./firmware/firmware.bin
           body: |
-            ## 🤖 DexArm Firmware ${{ needs.build.outputs.version }}
+            ## 🤖 Wade Robotics Marlin ${{ needs.build.outputs.version }}
             
             ### Firmware Details
             | Property | Value |

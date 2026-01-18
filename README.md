@@ -3,7 +3,7 @@
 [![Build & Release](https://github.com/Wade-Robotics/Marlin_For_DexArm/actions/workflows/build-firmware.yml/badge.svg)](https://github.com/Wade-Robotics/Marlin_For_DexArm/actions/workflows/build-firmware.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Custom Marlin firmware for DexArm robotic arms, maintained by Wade Robotics.
+Custom firmware for DexArm robotic arms, maintained by Wade Robotics.
 
 ## Features
 
@@ -63,6 +63,14 @@ Key configuration files:
 - `Marlin/Configuration.h` - Basic settings
 - `Marlin/Configuration_adv.h` - Advanced features (M114_REALTIME enabled here)
 
+## Support
+
+For help with Wade Robotics Marlin firmware:
+
+- 📋 [Open an Issue](https://github.com/Wade-Robotics/Marlin_For_DexArm/issues) - Bug reports and feature requests
+- 💬 [Discussions](https://github.com/Wade-Robotics/Marlin_For_DexArm/discussions) - Questions and community help
+- 📧 Contact Wade Robotics directly for commercial support
+
 ## Contributing
 
 1. Fork this repository
@@ -71,31 +79,11 @@ Key configuration files:
 
 Builds are automatically triggered on push. Merges to `main` create new releases.
 
-## Upstream Marlin
-
-This firmware is based on [Marlin Firmware](https://marlinfw.org/), the popular open-source firmware for 3D printers and CNC machines.
-
-- [Marlin Documentation](https://marlinfw.org/docs/basics/introduction.html)
-- [Marlin GitHub](https://github.com/MarlinFirmware/Marlin)
-- [G-code Reference](https://marlinfw.org/meta/gcode/)
-
 ## License
 
 This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
 
-Marlin is published under the GPL license because we believe in open development. The GPL comes with both rights and obligations. Whether you use this firmware as the driver for your open or closed-source product, you must keep the source open and provide your compatible source code to end users upon request.
-
-## Credits
-
-**Wade Robotics Marlin** is maintained by:
-- Wade Robotics Team
-
-**Original Marlin Firmware** by:
-- Scott Lahteine [@thinkyhead](https://github.com/thinkyhead)
-- Roxanne Neufeld [@Roxy-3D](https://github.com/Roxy-3D)
-- Chris Pepper [@p3p](https://github.com/p3p)
-- Bob Kuhn [@Bob-the-Kuhn](https://github.com/Bob-the-Kuhn)
-- Erik van der Zalm [@ErikZalm](https://github.com/ErikZalm)
+This firmware is based on the open-source Marlin project. Per the GPL license, the source code is provided and must remain open.
 
 ---
 

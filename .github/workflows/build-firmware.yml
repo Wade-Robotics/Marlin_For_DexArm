@@ -1,33 +1,47 @@
 # Build and Release DexArm Firmware
 #
-# This workflow builds the Marlin firmware for DexArm and attaches
-# the binary to GitHub releases for automatic updates via Wade Robotics Studio.
+# This workflow builds the Marlin firmware for DexArm and:
+# - On push to main: Automatically creates a release with the firmware
+# - On push to DexArm_Dev: Builds and uploads as artifact for testing
+# - Manual trigger: Optionally create release
 #
-# Triggers:
-# - On push to main/master (builds but doesn't release)
-# - On release creation (builds and attaches binary to release)
-# - Manual trigger via workflow_dispatch
+# Features:
+# - Auto-incrementing version numbers
+# - Firmware validation (size + ARM vector table check)
+# - SHA256 checksums for verification
 
-name: Build Firmware
+name: Build & Release Firmware
 
 on:
   push:
-    branches: [main, master]
+    branches: 
+      - main
+      - DexArm_Dev
     paths:
       - 'Marlin/**'
       - 'platformio.ini'
+      - 'buildroot/**'
       - '.github/workflows/build-firmware.yml'
   
-  release:
-    types: [created]
+  pull_request:
+    branches: [main]
   
   workflow_dispatch:
     inputs:
       create_release:
-        description: 'Create a new release with the built firmware'
+        description: 'Create a new release'
         required: false
         type: boolean
         default: false
+      version_bump:
+        description: 'Version bump type'
+        required: false
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
 
 env:
   PLATFORMIO_ENV: DEXARM_V3_2
@@ -35,10 +49,68 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      firmware_size: ${{ steps.firmware_info.outputs.size }}
+      firmware_sha256: ${{ steps.firmware_info.outputs.sha256 }}
+      version: ${{ steps.version.outputs.version }}
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for version calculation
+      
+      - name: Calculate version
+        id: version
+        run: |
+          # Get the latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+          
+          # Parse version components
+          VERSION=${LATEST_TAG#v}
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+          
+          # Default values if parsing fails
+          MAJOR=${MAJOR:-0}
+          MINOR=${MINOR:-0}
+          PATCH=${PATCH:-0}
+          
+          # Determine bump type
+          BUMP="${{ inputs.version_bump }}"
+          if [ -z "$BUMP" ]; then
+            # Auto-detect based on commit message or default to patch
+            if git log -1 --pretty=%B | grep -qi "BREAKING CHANGE\|!:"; then
+              BUMP="major"
+            elif git log -1 --pretty=%B | grep -qi "^feat"; then
+              BUMP="minor"
+            else
+              BUMP="patch"
+            fi
+          fi
+          
+          # Increment version
+          case $BUMP in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "version_number=${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -52,6 +124,7 @@ jobs:
       
       - name: Build firmware
         run: |
+          echo "Building for ${{ env.PLATFORMIO_ENV }}..."
           pio run -e ${{ env.PLATFORMIO_ENV }}
       
       - name: Get firmware info
@@ -64,16 +137,21 @@ jobs:
             exit 1
           fi
           
-          SIZE=$(stat -f%z "$FIRMWARE_PATH" 2>/dev/null || stat -c%s "$FIRMWARE_PATH")
+          SIZE=$(stat -c%s "$FIRMWARE_PATH")
           SHA256=$(sha256sum "$FIRMWARE_PATH" | cut -d' ' -f1)
           
           echo "path=$FIRMWARE_PATH" >> $GITHUB_OUTPUT
           echo "size=$SIZE" >> $GITHUB_OUTPUT
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
           
-          echo "## Firmware Build Info" >> $GITHUB_STEP_SUMMARY
-          echo "- **Size:** $SIZE bytes ($(echo "scale=1; $SIZE/1024" | bc) KB)" >> $GITHUB_STEP_SUMMARY
-          echo "- **SHA256:** \`$SHA256\`" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔧 Firmware Build Info" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version** | ${{ steps.version.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Size** | $SIZE bytes ($(echo "scale=1; $SIZE/1024" | bc) KB) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **SHA256** | \`${SHA256:0:16}...\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Target** | ${{ env.PLATFORMIO_ENV }} |" >> $GITHUB_STEP_SUMMARY
       
       - name: Validate firmware
         run: |
@@ -82,17 +160,15 @@ jobs:
           # Check file size (should be between 1KB and 960KB)
           SIZE=${{ steps.firmware_info.outputs.size }}
           if [ $SIZE -lt 1024 ]; then
-            echo "Error: Firmware too small ($SIZE bytes)"
+            echo "::error::Firmware too small ($SIZE bytes)"
             exit 1
           fi
           if [ $SIZE -gt 983040 ]; then
-            echo "Error: Firmware too large ($SIZE bytes)"
+            echo "::error::Firmware too large ($SIZE bytes)"
             exit 1
           fi
           
           # Validate ARM vector table
-          # First 4 bytes = Stack Pointer (should point to SRAM: 0x20000000+)
-          # Next 4 bytes = Reset Handler (should point to Flash: 0x08000000+)
           SP=$(xxd -l 4 -e "$FIRMWARE_PATH" | awk '{print $2}')
           RESET=$(xxd -s 4 -l 4 -e "$FIRMWARE_PATH" | awk '{print $2}')
           
@@ -102,85 +178,136 @@ jobs:
           # Check SP points to SRAM (0x20000000 - 0x20030000)
           SP_DEC=$((16#$SP))
           if [ $SP_DEC -lt $((16#20000000)) ] || [ $SP_DEC -gt $((16#20030000)) ]; then
-            echo "Warning: Stack pointer may not point to SRAM"
+            echo "::warning::Stack pointer may not point to SRAM"
           fi
           
           # Check Reset Handler points to Flash (0x08000000 - 0x08100000)
           RESET_DEC=$((16#$RESET))
           if [ $RESET_DEC -lt $((16#08000000)) ] || [ $RESET_DEC -gt $((16#08100000)) ]; then
-            echo "Warning: Reset handler may not point to Flash"
+            echo "::warning::Reset handler may not point to Flash"
           fi
           
-          echo "Firmware validation passed!"
+          echo "✅ Firmware validation passed!"
       
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-${{ env.PLATFORMIO_ENV }}
+          name: firmware-${{ steps.version.outputs.version }}
           path: ${{ steps.firmware_info.outputs.path }}
-          retention-days: 30
-      
-      # Attach to release if this is a release event
-      - name: Attach firmware to release
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ${{ steps.firmware_info.outputs.path }}
-          append_body: true
-          body: |
-            
-            ---
-            ### Firmware Binary
-            - **File:** `firmware.bin`
-            - **Size:** ${{ steps.firmware_info.outputs.size }} bytes
-            - **SHA256:** `${{ steps.firmware_info.outputs.sha256 }}`
-            - **Target:** ${{ env.PLATFORMIO_ENV }}
-            
-            ### Installation
-            Flash via Wade Robotics Studio or use M2002/M2003 bootloader commands.
-      
-      # Create release if manually triggered with create_release=true
-      - name: Create release (manual trigger)
-        if: github.event_name == 'workflow_dispatch' && inputs.create_release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ github.run_number }}
-          name: Firmware Build ${{ github.run_number }}
-          draft: true
-          files: ${{ steps.firmware_info.outputs.path }}
-          body: |
-            ## DexArm Firmware
-            
-            Built from commit ${{ github.sha }}
-            
-            ### Firmware Binary
-            - **File:** `firmware.bin`
-            - **Size:** ${{ steps.firmware_info.outputs.size }} bytes
-            - **SHA256:** `${{ steps.firmware_info.outputs.sha256 }}`
-            - **Target:** ${{ env.PLATFORMIO_ENV }}
-            
-            ### Changes
-            <!-- Add release notes here -->
-            
-            ### Installation
-            Flash via Wade Robotics Studio or use M2002/M2003 bootloader commands.
+          retention-days: 90
 
-  # Build for multiple targets (future expansion)
-  build-matrix:
-    if: false  # Disabled for now - enable when supporting multiple boards
+  # Auto-release on push to main
+  release:
+    needs: build
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        env: [DEXARM_V3_2, DEXARM_V3_1, DEXARM_V2]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Download firmware
+        uses: actions/download-artifact@v4
         with:
-          python-version: '3.11'
-      - run: pip install platformio
-      - run: pio run -e ${{ matrix.env }}
-      - uses: actions/upload-artifact@v4
+          name: firmware-${{ needs.build.outputs.version }}
+          path: ./firmware
+      
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get commits since last tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LATEST_TAG" ]; then
+            CHANGES=$(git log ${LATEST_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges | head -20)
+          else
+            CHANGES=$(git log --pretty=format:"- %s (%h)" --no-merges -10)
+          fi
+          
+          # Write to file for multiline output
+          echo "$CHANGES" > changelog.txt
+          echo "changes_file=changelog.txt" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: firmware-${{ matrix.env }}
-          path: .pio/build/${{ matrix.env }}/firmware.bin
+          tag_name: ${{ needs.build.outputs.version }}
+          name: DexArm Firmware ${{ needs.build.outputs.version }}
+          draft: false
+          prerelease: false
+          files: ./firmware/firmware.bin
+          body: |
+            ## 🤖 DexArm Firmware ${{ needs.build.outputs.version }}
+            
+            ### What's New
+            ${{ steps.changelog.outputs.changes || 'See commit history for changes.' }}
+            
+            ### Firmware Details
+            | Property | Value |
+            |----------|-------|
+            | **Size** | ${{ needs.build.outputs.firmware_size }} bytes |
+            | **SHA256** | `${{ needs.build.outputs.firmware_sha256 }}` |
+            | **Target** | DEXARM_V3_2 (STM32F407) |
+            
+            ### Features
+            - ✅ Real-time position reporting (M114 R)
+            - ✅ YMODEM firmware update support
+            
+            ### Installation
+            
+            **Via Wade Robotics Studio (Recommended):**
+            1. Open Wade Robotics Studio
+            2. Go to Settings → Firmware Update
+            3. Click "Check for Updates"
+            4. Follow the prompts to install
+            
+            **Manual Installation:**
+            1. Download `firmware.bin`
+            2. Connect to DexArm via serial terminal
+            3. Send `M2002` then `M2003` to enter bootloader
+            4. Use YMODEM to transfer the firmware
+            5. Send `3` to execute
+            
+            ---
+            *Built from commit ${{ github.sha }}*
+
+  # Manual release (workflow_dispatch with create_release=true)
+  manual-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.create_release
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Download firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-${{ needs.build.outputs.version }}
+          path: ./firmware
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build.outputs.version }}
+          name: DexArm Firmware ${{ needs.build.outputs.version }}
+          draft: true
+          files: ./firmware/firmware.bin
+          body: |
+            ## 🤖 DexArm Firmware ${{ needs.build.outputs.version }}
+            
+            ### Firmware Details
+            | Property | Value |
+            |----------|-------|
+            | **Size** | ${{ needs.build.outputs.firmware_size }} bytes |
+            | **SHA256** | `${{ needs.build.outputs.firmware_sha256 }}` |
+            | **Target** | DEXARM_V3_2 (STM32F407) |
+            
+            ### Changes
+            <!-- Add release notes here before publishing -->
+            
+            ### Installation
+            Flash via Wade Robotics Studio or use M2002/M2003 bootloader commands.
+            
+            ---
+            *Built from commit ${{ github.sha }}*

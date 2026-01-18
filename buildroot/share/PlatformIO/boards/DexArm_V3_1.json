@@ -16,7 +16,7 @@
     ],
     "ldscript": "stm32f407xg.ld",
     "mcu": "stm32f407zgt6",
-    "variant": "DexArm_3V1"
+    "variant": "DexArm_3v1"
   },
   "debug": {
     "jlink_device": "STM32F407ZG",

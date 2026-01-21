@@ -1621,7 +1621,7 @@
  *
  * View the current statistics with M78.
  */
-//#define PRINTCOUNTER
+#define PRINTCOUNTER  // Track job statistics (M78 to view)
 
 //=============================================================================
 //============================= LCD and SD support ============================

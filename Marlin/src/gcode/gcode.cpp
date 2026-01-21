@@ -567,6 +567,7 @@ void GcodeSuite::process_parsed_command(const bool no_ok/*=false*/) {
       case 2007: M2007(); break;                                    // M2007
       case 2010: M2010(); break;                                    // M2010
       case 2011: M2011(); break;                                    // M2011
+      case 2020: M2020(); break;                                    // M2020: Position streaming
 	    case 2012: M2012(); break;                                    // M2012
       case 2013: M2013(); break;                                    // M2013
       case 2014: M2014(); break;                                    // M2014

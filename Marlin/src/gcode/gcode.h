@@ -665,6 +665,7 @@ private:
   static void M2007();
   static void M2010();
   static void M2011();
+  static void M2020();  // Position streaming control
   static void M2012();
   static void M2013();
   static void M2014();

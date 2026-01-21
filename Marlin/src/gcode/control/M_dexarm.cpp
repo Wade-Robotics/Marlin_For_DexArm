@@ -618,6 +618,61 @@ void GcodeSuite::M2011()
 	SERIAL_ECHOPAIR(HARDWARE_VERSION);
 }
 
+// M2020 - Position streaming control
+// M2020 S<interval_ms> - Start streaming at interval (0 = stop)
+// M2020                - Report current streaming status
+static uint32_t position_stream_interval_ms = 0;
+static uint32_t position_stream_last_time = 0;
+
+void GcodeSuite::M2020()
+{
+	if (parser.seenval('S')) {
+		position_stream_interval_ms = parser.value_ulong();
+		if (position_stream_interval_ms > 0) {
+			SERIAL_ECHOLNPAIR("pos_stream:start:", position_stream_interval_ms);
+		} else {
+			SERIAL_ECHOLNPGM("pos_stream:stop");
+		}
+	} else {
+		SERIAL_ECHOLNPAIR("pos_stream:interval:", position_stream_interval_ms);
+	}
+}
+
+// Helper to round to nearest increment (e.g., 0.05mm for claimed repeatability)
+static inline float round_to_increment(float value, float increment) {
+	return roundf(value / increment) * increment;
+}
+
+// Call from idle() loop to emit positions at configured interval
+// Uses position sensors for true real-time position (works during homing too)
+void position_stream_tick() {
+	if (position_stream_interval_ms == 0) return;
+	
+	const uint32_t now = millis();
+	if (now - position_stream_last_time >= position_stream_interval_ms) {
+		position_stream_last_time = now;
+		
+		// Get real-time position directly from magnetic position sensors
+		// This works for ALL movements including homing (m1112_position)
+		xyz_pos_t position;
+		get_current_position_from_position_sensor(position);
+		
+		// Round to 0.05mm to match claimed repeatability and reduce sensor noise
+		position.x = round_to_increment(position.x, 0.05f);
+		position.y = round_to_increment(position.y, 0.05f);
+		position.z = round_to_increment(position.z, 0.05f);
+		
+		// Get E axis (wrist rotation) - use current_position as it's not sensor-tracked
+		const float realtime_e = round_to_increment(current_position.e, 0.05f);
+		
+		SERIAL_ECHOPAIR("pos:");
+		SERIAL_ECHOPAIR("X:", position.x);
+		SERIAL_ECHOPAIR(" Y:", position.y);
+		SERIAL_ECHOPAIR(" Z:", position.z);
+		SERIAL_ECHOLNPAIR(" E:", realtime_e);
+	}
+}
+
 void GcodeSuite::M5201314()
 {
 	while(1){

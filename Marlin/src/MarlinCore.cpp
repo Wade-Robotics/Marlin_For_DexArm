@@ -688,6 +688,10 @@ void idle(
     gcode.host_keepalive();
   #endif
 
+  // Position streaming for Wade Robotics Studio
+  extern void position_stream_tick();
+  position_stream_tick();
+
   manage_inactivity(
     #if ENABLED(ADVANCED_PAUSE_FEATURE)
       no_stepper_sleep

@@ -1,7 +1,10 @@
 #include "../gcode.h"
+#include "../queue.h"
 #include "../../module/planner.h"
+#include "../../module/motion.h"
 #include "../../module/endstops.h"
 #include "../../module/configuration_store.h"
+#include "../../MarlinCore.h"  // For quickstop_stepper
 
 #define DEBUG_OUT ENABLED(DEBUG_LEVELING_FEATURE)
 #include "../../core/debug_out.h"
@@ -450,6 +453,24 @@ void GcodeSuite::M1112()
 {
 	SERIAL_ECHOPAIR("M1112\r\n");
 	planner.synchronize();
+	
+	// If XY interlock is enabled AND arm is already initialized,
+	// lift to safe Z first before homing to avoid collisions
+	if (xy_interlock_enabled && position_init_flag) {
+		// Only lift if current Z is below safe Z
+		if (current_position.z < xy_interlock_safe_z) {
+			SERIAL_ECHOPGM("Lifting to safe Z (");
+			SERIAL_ECHO(xy_interlock_safe_z);
+			SERIAL_ECHOLNPGM("mm) before home...");
+			
+			// Move to safe Z height
+			destination = current_position;
+			destination.z = xy_interlock_safe_z;
+			prepare_line_to_destination();
+			planner.synchronize();
+		}
+	}
+	
 	xyz_pos_t position;
 	bool check_param = parser.seen('X') & parser.seen('Y') & parser.seen('Z');
 	if (check_param)
@@ -621,8 +642,9 @@ void GcodeSuite::M2011()
 // M2020 - Position streaming control
 // M2020 S<interval_ms> - Start streaming at interval (0 = stop)
 // M2020                - Report current streaming status
-static uint32_t position_stream_interval_ms = 0;
-static uint32_t position_stream_last_time = 0;
+// Note: volatile to ensure proper visibility between M2020 command and idle() loop
+static volatile uint32_t position_stream_interval_ms = 0;
+static volatile uint32_t position_stream_last_time = 0;
 
 void GcodeSuite::M2020()
 {

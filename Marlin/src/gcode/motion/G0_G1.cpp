@@ -30,12 +30,14 @@
 #endif
 
 #include "../../sd/cardreader.h"
+#include "../../module/planner.h"  // for planner.synchronize() in XY interlock
 
 #if ENABLED(NANODLP_Z_SYNC)
   #include "../../module/stepper.h"
 #endif
 
 #include "../../module/dexarm/dexarm.h"
+#include "../../module/dexarm/dexarm_position_reachable.h"  // For ZMINARM, ZMAXARM
 
 extern xyze_pos_t destination;
 
@@ -60,6 +62,81 @@ void GcodeSuite::G0_G1(
         | (parser.seen('Z') ? _BV(Z_AXIS) : 0) )
     #endif
   ) {
+
+    // Safe Travel Mode: G0/G1 with T1 parameter
+    // Sequence: 1) Move Z to safe height, 2) Move XY + E, 3) Move Z to final destination
+    // Usage: G0 X100 Y50 T1      - safe travel to XY
+    //        G0 X100 Y50 Z-20 T1 - safe travel to XY, then Z
+    //        G0 X100 Y50 E45 T1  - safe travel to XY with rotation
+    // Without T1: direct movement (normal behavior, good for jogging)
+    if (parser.seen('T') && parser.value_int() == 1) {
+      const float safe_z = xy_interlock_safe_z;
+      // SAFETY: Validate safe_z is within DexArm limits (ZMINARM to ZMAXARM)
+      const bool safe_z_valid = (safe_z >= ZMINARM && safe_z <= ZMAXARM);
+      
+      if (safe_z_valid) {
+        const bool has_xy_move = parser.seen('X') || parser.seen('Y');
+        const bool z_not_at_safe = (current_position.z < safe_z - 0.1f) || (current_position.z > safe_z + 0.1f);
+        
+        if (has_xy_move && z_not_at_safe) {
+          // Save user's desired final Z (if specified) and feedrate
+          const bool has_z_target = parser.seenval('Z');
+          const float final_z = has_z_target ? parser.value_float() : current_position.z;
+          const feedRate_t user_feedrate = parser.seenval('F') ? MMM_TO_MMS(parser.value_float()) : feedrate_mm_s;
+          
+          // Get XY targets
+          const float target_x = parser.seenval('X') ? parser.value_float() : current_position.x;
+          const float target_y = parser.seenval('Y') ? parser.value_float() : current_position.y;
+          
+          // Get E (rotation) target - don't silently drop this!
+          const bool has_e_target = parser.seenval('E');
+          const float target_e = has_e_target ? parser.value_float() : current_position.e;
+          
+          // SAFETY: Check if XY target is reachable at safe_z height
+          // At high Z, the reachable radius shrinks significantly
+          xyz_pos_t check_pos = { target_x, target_y, safe_z };
+          if (!dexarm_position_is_reachable(check_pos)) {
+            SERIAL_ECHOLNPGM("Error: XY target unreachable at safe travel height, using direct move");
+            // Fall through to normal G0/G1 processing
+          } else {
+            // Step 1: Move Z to safe height first
+            destination = current_position;
+            destination.z = safe_z;
+            feedrate_mm_s = MMM_TO_MMS(3000);  // Z travel at 3000 mm/min
+            prepare_line_to_destination();
+            planner.synchronize();
+            current_position.z = safe_z;
+            
+            // Step 2: Move XY (and E if specified) at safe height
+            destination = current_position;
+            destination.x = target_x;
+            destination.y = target_y;
+            destination.e = target_e;  // Include rotation
+            feedrate_mm_s = user_feedrate;
+            prepare_line_to_destination();
+            planner.synchronize();
+            current_position.x = target_x;
+            current_position.y = target_y;
+            current_position.e = target_e;
+            
+            // Step 3: Move Z to final destination (if user specified Z, or stay at safe_z)
+            if (has_z_target) {
+              destination = current_position;
+              destination.z = final_z;
+              feedrate_mm_s = MMM_TO_MMS(3000);  // Z travel at 3000 mm/min
+              prepare_line_to_destination();
+              planner.synchronize();
+              current_position.z = final_z;
+            }
+            
+            // Restore feedrate and exit - we handled the complete move
+            feedrate_mm_s = user_feedrate;
+            return;  // Don't execute normal G0/G1 processing
+          }
+        }
+      }
+      // If safe_z invalid, XY unreachable, or no XY move needed, fall through to normal processing
+    }
 
     #ifdef G0_FEEDRATE
       feedRate_t old_feedrate;

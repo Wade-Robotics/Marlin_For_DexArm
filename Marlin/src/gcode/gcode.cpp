@@ -576,6 +576,7 @@ void GcodeSuite::process_parsed_command(const bool no_ok/*=false*/) {
       case 2102: M2102(); break;                                    // M2102
       case 2103: M2103(); break;                                    // M2103
       case 2110: M2110(); break;                                    // M2110
+      case 2120: M2120(); break;                                    // M2120: XY Interlock
       case 5201314: M5201314(); break;                              // M5010000
       case 5010000: M5010000(); break;                              // M5010000
 

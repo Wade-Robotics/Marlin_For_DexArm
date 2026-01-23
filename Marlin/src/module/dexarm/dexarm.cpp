@@ -34,6 +34,11 @@ bool laser_fan_flag = false;
 bool position_init_flag = false; //DexArm will not move without position init.
 bool current_position_flag = false;
 
+// XY Interlock (Safe Travel Mode)
+// When enabled, XY moves lift to safe Z first, then move XY, then lower to final Z
+bool xy_interlock_enabled = false;    // Disabled by default
+float xy_interlock_safe_z = 0.0f;     // Default to home/base level (Z=0)
+
 float current_position_init[XYZE] = {START_X, START_Y, START_Z, 0.0};
 float dexarm_z_offset = 0;
 bool INVERT_E0_DIR = true;
@@ -874,6 +879,11 @@ void dexarm_init() {
 		thermalManager.allow_cold_extrude = true;
 	}
 	dexarm_air_pump.init();
+	
+	// SAFETY: Explicitly initialize interlock settings at boot
+	// This ensures we never have garbage values even if static init fails
+	xy_interlock_enabled = false;  // Off by default
+	xy_interlock_safe_z = 0.0f;    // Default to Z=0 (home/base level)
 }
 
 void dexarm_loop() {

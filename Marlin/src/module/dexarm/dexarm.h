@@ -25,6 +25,12 @@ extern bool laser_fan_flag;
 extern bool position_init_flag;
 extern bool INVERT_E0_DIR;
 
+// XY Interlock (Safe Travel Mode)
+// When enabled, XY moves lift to safe Z first, then move XY, then lower to final Z
+// This protects against collisions when moving across the workspace
+extern bool xy_interlock_enabled;     // Master enable flag
+extern float xy_interlock_safe_z;     // Z height for safe travel (default 0)
+
 typedef enum {
     FAST_MODE,
     LINE_MODE,
